@@ -1,12 +1,12 @@
 from network_analysis import plot_network
 
 import sys
-import subprocess
-import json
+import requests
 
 DEFAULT_MOVEMENT_ID = 1
 EMAIL = 'admin@gridt.org'
 PASSWORD = 'insecure'
+BASE_URL = 'https://api.gridt.org'
 
 
 def main(movement_id: int = DEFAULT_MOVEMENT_ID) -> None:
@@ -27,31 +27,20 @@ def login() -> str:
 
 
 def get_token() -> str:
-    cmd = (
-        "curl -k --silent --location 'https://localhost/auth' "
-        "--header 'HOST: api.gridt.org' "
-        "--header 'Content-Type: application/json' "
-        "--data-raw '{"
-        f"\"username\": \"{EMAIL}\", "
-        f"\"password\": \"{PASSWORD}\""
-        "}'; exit 0"
-    )
-    returned_output = subprocess.check_output(cmd, shell=True)
-    response = json.loads(returned_output.decode('utf-8'))
-    return response.get('access_token')
+    url = f'{BASE_URL}/auth'
+    body = dict(username=EMAIL, password=PASSWORD)
+    response = requests.post(url=url, json=body)
+    return response.json()['access_token']
 
 
 def get_movement_data(id: int, token: str) -> tuple:
     print("Loading data...", end='\t')
-    cmd = (
-        f"curl -k --silent --location 'https://localhost/movements/{id}/data' "
-        "--header 'Host: api.gridt.org' "
-        f"--header 'Authorization: JWT {token}'; exit 0"
-    )
-    returned_output = subprocess.check_output(cmd, shell=True)
-    response = json.loads(returned_output.decode('utf-8'))
+    url = f'{BASE_URL}/movements/{id}/data'
+    header = dict(authorization=f'JWT {token}')
+    response = requests.get(url=url, headers=header)
+    response_json = response.json()
     print("done.")
-    return response.get('edges', []), response.get('nodes', [])
+    return response_json.get('edges', []), response_json.get('nodes', [])
 
 
 if __name__ == "__main__":
